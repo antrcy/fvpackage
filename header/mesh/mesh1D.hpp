@@ -15,42 +15,41 @@ using namespace FVTYPES;
 #############################*/
 
 /** @brief 1D field of dimState data*/
-template < unsigned int dimState >
+template < typename dtype, unsigned int dimState >
 class Field1D {
     private:
         // ATTRIBUTES
         const static int dim = dimState;
         size_t nx;
-        std::vector< EigType::Vector<dimState>,
-                     Eigen::aligned_allocator< EigType::Vector<dimState> > > values;
+        std::vector< EigType::Vector<dtype, dimState>,
+                     Eigen::aligned_allocator< EigType::Vector<dtype, dimState> > > values;
 
     public:
         Field1D(size_t nx): nx(nx) {
             values.resize( (nx+2) );
         }
         // ACCESSORS
-        EigType::Vector<dimState>& operator()(index_t i) {return values[ i%(nx+2) ];}
-        const EigType::Vector<dimState>& operator()(index_t i) const {return values[ i%(nx+2) ];}
+        EigType::Vector<dtype, dimState>& operator()(index_t i) {return values[ i%(nx+2) ];}
+        const EigType::Vector<dtype, dimState>& operator()(index_t i) const {return values[ i%(nx+2) ];}
         size_t get_nx() const {return nx;}
 };
 
-template <>
-class Field1D<1> {
+template < typename dtype >
+class Field1D<dtype, 1> {
     private:
         // ATTRIBUTES
         size_t nx;
-        std::vector< double > values;
+        std::vector< dtype > values;
 
     public:
         Field1D(size_t nx): nx(nx) {
             values.resize( (nx+2) );
         }
         // ACCESSORS
-        double& operator()(index_t i) {return values[ i%(nx+2) ];}
-        const double& operator()(index_t i) const {return values[ i%(nx+2) ];}
+        dtype& operator()(index_t i) {return values[ i%(nx+2) ];}
+        const dtype& operator()(index_t i) const {return values[ i%(nx+2) ];}
         size_t get_nx() const {return nx;}
 };
-
 
 
 /*############################
@@ -105,19 +104,19 @@ class Mesh1D {
             return cell_corners[i];
         }
         /** @brief  Returns cell-centered field*/
-        template < unsigned int dimState > 
-        Field1D<dimState> get_center_field() const {
-            return Field1D<dimState>(nCx);
+        template < typename dtype, unsigned int dimState > 
+        Field1D<dtype, dimState> get_center_field() const {
+            return Field1D<dtype, dimState>(nCx);
         }
         /** @brief Returns corner-centered field*/
-        template < unsigned int dimState > 
-        Field1D<dimState> get_corner_field() const {
-            return Field1D<dimState>(nPx);
+        template < typename dtype, unsigned int dimState > 
+        Field1D<dtype, dimState> get_corner_field() const {
+            return Field1D<dtype, dimState>(nPx);
         }
         /** @brief Returns cell-evaluated field*/
-        template < unsigned int dimState >
-        Field1D<dimState> evaluate_center( const fn_x_ftype<dimState>& f_init ) const {
-            Field1D<dimState> field = get_center_field<dimState>();
+        template < typename dtype, unsigned int dimState >
+        Field1D<dtype, dimState> evaluate_center( const fnX_ftype<dtype, dimState>& f_init ) const {
+            Field1D<dtype, dimState> field = get_center_field<dtype, dimState>();
 
             for (size_t i = 0; i < nCx+2; ++i) {
                 field(i) = f_init(get_cell(i));
@@ -126,9 +125,9 @@ class Mesh1D {
             return field;
         }
         /** @brief Returns corner-evaluated field*/
-        template < unsigned int dimState >
-        Field1D<dimState> evaluate_corner( const fn_x_ftype<dimState>& f_init ) const {
-            Field1D<dimState> field = get_corner_field<dimState>();
+        template < typename dtype, unsigned int dimState >
+        Field1D<dtype, dimState> evaluate_corner( const fnX_ftype<dtype, dimState>& f_init ) const {
+            Field1D<dtype, dimState> field = get_corner_field<dtype, dimState>();
 
             for (size_t i = 0; i < nCx+3; ++i) {
                 field(i) = f_init(get_corner(i));

@@ -17,20 +17,20 @@
 using index_t = unsigned long int;
 
 namespace EigType {
-    template < unsigned int dimState >
+    template < typename dtype, unsigned int dimState >
     struct Matrix;
 
-    template < unsigned int dimState >
+    template < typename dtype, unsigned int dimState >
     struct Vector;
 
-    template < unsigned int dimState >
+    template < typename dtype, unsigned int dimState >
     struct EigenStructure;
 }
 
 // Should be used with stateDim
 namespace StateType {
-    template < unsigned int dimState >
-    using Var = std::conditional_t< dimState == 1, double, EigType::Vector<dimState> >;
+    template < typename dtype, unsigned int dimState >
+    using Var = std::conditional_t< dimState == 1, dtype, EigType::Vector<dtype, dimState> >;
 }
 
 /*###########################
@@ -38,17 +38,17 @@ namespace StateType {
 ###########################*/
 
 /** @brief Vector wrapper for Eigen::Vector.*/
-template < unsigned int dimState >
+template < typename dtype, unsigned int dimState >
 struct EigType::Vector {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     // ATTRIBUTES
 
-    Eigen::Vector<double, dimState> vec;
+    Eigen::Vector<dtype, dimState> vec;
 
-    // METHODES
+    // METHODS
     Vector() = default;
     Vector(const Vector&) = default;
-    Vector(std::array<double, dimState> data) {
+    Vector(std::array<dtype, dimState> data) {
         for (index_t i = 0; i < dimState; ++i) {
             vec(i) = data[i];
         }
@@ -56,22 +56,22 @@ struct EigType::Vector {
 
     Vector& operator=(const Vector&) = default;
 
-    double& operator()(index_t i) {return vec(i);}
-    const double& operator()(index_t i) const {return vec(i);}
+    dtype& operator()(index_t i) {return vec(i);}
+    const dtype& operator()(index_t i) const {return vec(i);}
 
     /** @brief Operator overload 'Vector * double'*/
-    Vector<dimState> operator*(double l) const {
-        Vector<dimState> res; res.vec = vec*l;
+    Vector<dtype, dimState> operator*(double l) const {
+        Vector<dtype, dimState> res; res.vec = vec*l;
         return res;
     }
     /** @brief Operator overload 'Vector + Vector'*/
-    Vector<dimState> operator+(const Vector<dimState>& v) const {
-        Vector<dimState> res; res.vec = vec + v.vec;
+    Vector<dtype, dimState> operator+(const Vector<dtype, dimState>& v) const {
+        Vector<dtype, dimState> res; res.vec = vec + v.vec;
         return res;
     }
     /** @brief Operator overload 'Vector - Vector'*/
-    Vector<dimState> operator-(const Vector<dimState>& v) const {
-        Vector<dimState> res; res.vec = vec - v.vec;
+    Vector<dtype, dimState> operator-(const Vector<dtype, dimState>& v) const {
+        Vector<dtype, dimState> res; res.vec = vec - v.vec;
         return res;
     }
 
@@ -79,12 +79,12 @@ struct EigType::Vector {
     std::array<index_t, dimState> sort();
 
     /** @brief Computes highest absolute value eigenvalue.*/
-    double abs_max() const;
+    dtype abs_max() const;
 };
 
-template < unsigned int dimState >
-double EigType::Vector<dimState>::abs_max() const {
-    double max = 0.0;
+template < typename dtype, unsigned int dimState >
+dtype EigType::Vector<dtype, dimState>::abs_max() const {
+    dtype max = 0.0;
     for (index_t i = 0; i < dimState; ++ i) {
         if ( std::abs( vec(i) )> max ) {
             max = std::abs( vec(i) );
@@ -93,8 +93,8 @@ double EigType::Vector<dimState>::abs_max() const {
     return max;
 }
 
-template < unsigned int dimState >
-std::array<index_t, dimState> EigType::Vector<dimState>::sort() {
+template < typename dtype, unsigned int dimState >
+std::array<index_t, dimState> EigType::Vector<dtype, dimState>::sort() {
     std::array<index_t, dimState> args;
     for (index_t i = 0; i < dimState; ++ i) {
         args[i] = i;
@@ -123,11 +123,11 @@ std::array<index_t, dimState> EigType::Vector<dimState>::sort() {
 ####################################*/
 
 /** @brief Container for eigen-sructures.*/
-template < unsigned int dimState >
+template < typename dtype, unsigned int dimState >
 struct EigType::EigenStructure {
-    EigType::Vector<dimState> eig_val;
-    EigType::Matrix<dimState> eig_vec;
-    EigType::Matrix<dimState> eig_inv;
+    EigType::Vector<dtype, dimState> eig_val;
+    EigType::Matrix<dtype, dimState> eig_vec;
+    EigType::Matrix<dtype, dimState> eig_inv;
 };
 
 /*###########################
@@ -135,67 +135,50 @@ struct EigType::EigenStructure {
 ###########################*/
 
 /** @brief Square matrix wrapper for Eigen::Matrix.*/
-template < unsigned int dimState >
+template < typename dtype, unsigned int dimState >
 struct  EigType::Matrix {
     // ATTRIBUTES
 
-    Eigen::Matrix<double, dimState, dimState> mat;
+    Eigen::Matrix<dtype, dimState, dimState> mat;
 
     // METHODES
     Matrix() = default;
-    Matrix(std::initializer_list<std::initializer_list<double>> init) 
-        {mat = Eigen::Matrix<double, dimState, dimState>(init);}
-    explicit Matrix(double init) {
+    Matrix(const Eigen::Matrix<dtype, dimState, dimState>& mat): mat(mat) {}
+    explicit Matrix(dtype init) {
         static_assert(dimState == 1);
         mat(0,0) = init;
     }
-
-    /** @brief Set matrix data to data.*/
-    void set(double** data) {
-        for (index_t i = 0; i < dimState; ++i) {
-            for (index_t j = 0; j < dimState; ++j) {
-                mat(i,j) = data[i][j];
-            }
-        }
-    }
     
-    double& operator()(index_t i, index_t j) {return mat(i,j);}
-    const double& operator()(index_t i, index_t j) const {return mat(i,j);}
+    Matrix& operator=(const Matrix&) = default;
+    
+    dtype& operator()(index_t i, index_t j) {return mat(i,j);}
+    const dtype& operator()(index_t i, index_t j) const {return mat(i,j);}
 
-    /** @brief Operator overload 'Matrix = Matrix'*/
-    Matrix<dimState>& operator=(const Matrix<dimState>& m) {
-        for (index_t i = 0; i < dimState; ++i) {
-            for (index_t j = 0; j < dimState; ++j) {
-                mat(i,j) = m.mat(i,j);
-            }
-        }
-        return *this;
-    }
     /** @brief Operator overload 'Matrix + Matrix' */
-    Matrix<dimState> operator+(const Matrix<dimState>& m) {
-        Matrix<dimState> res; res.mat = mat + m.mat;
+    Matrix<dtype, dimState> operator+(const Matrix<dtype, dimState>& m) {
+        Matrix<dtype, dimState> res; res.mat = mat + m.mat;
         return res;
     }
     /** @brief Operator overload 'Matrix * double'*/
-    Matrix<dimState> operator*(double l) const {
-        Matrix<dimState> res; res.mat = mat*l;
+    Matrix<dtype, dimState> operator*(dtype l) const {
+        Matrix<dtype, dimState> res; res.mat = mat*l;
         return res;
     }
     /** @brief Operator overload 'Matrix * Vector'*/
-    Vector<dimState> operator*(const Vector<dimState>& vector) const {
-        Vector<dimState> res;
+    Vector<dtype, dimState> operator*(const Vector<dtype, dimState>& vector) const {
+        Vector<dtype, dimState> res;
         res.vec = mat*vector.vec;
         return res;
     }
 
-    Matrix<dimState> permute_col(std::array<index_t, dimState> perm);
-    EigenStructure<dimState> get_eigen_structure() const;
+    Matrix<dtype, dimState> permute_col(std::array<index_t, dimState> perm);
+    EigenStructure<dtype, dimState> get_eigen_structure() const;
 };
 
 /** @brief Permutes columns according to pattern perm*/
-template < unsigned int dimState >
-EigType::Matrix<dimState> EigType::Matrix<dimState>::permute_col(std::array<index_t, dimState> perm) {
-    Matrix<dimState> res;
+template < typename dtype, unsigned int dimState >
+EigType::Matrix<dtype, dimState> EigType::Matrix<dtype, dimState>::permute_col(std::array<index_t, dimState> perm) {
+    Matrix<dtype, dimState> res;
 
     for (index_t i=0; i<dimState; ++i) {
         res.mat.col(i) = mat.col(perm[i]);
@@ -205,22 +188,22 @@ EigType::Matrix<dimState> EigType::Matrix<dimState>::permute_col(std::array<inde
 }
 
 /** @brief Computes the eigen-structure of the matrix*/
-template < unsigned int dimState >
-EigType::EigenStructure<dimState> EigType::Matrix<dimState>::get_eigen_structure() const {
-    Eigen::EigenSolver< Eigen::Matrix<double, dimState, dimState> > es(mat);
+template < typename dtype, unsigned int dimState >
+EigType::EigenStructure<dtype, dimState> EigType::Matrix<dtype, dimState>::get_eigen_structure() const {
+    Eigen::EigenSolver< Eigen::Matrix<dtype, dimState, dimState> > es(mat);
 
     // Compute real eigenvalues and sort them
-    Vector<dimState> eig_val; eig_val.vec = es.eigenvalues().real();
+    Vector<dtype, dimState> eig_val; eig_val.vec = es.eigenvalues().real();
     std::array<index_t, dimState> perm = eig_val.sort();
 
     // Sort eigenvectors according to the same order
-    Matrix<dimState> eig_vec; eig_vec.mat = es.eigenvectors().real();
+    Matrix<dtype, dimState> eig_vec; eig_vec.mat = es.eigenvectors().real();
     eig_vec.permute_col(perm);
 
     // Compute inverse eigen matrix
-    Matrix<dimState> eig_inv; eig_inv.mat = eig_vec.mat.inverse();
+    Matrix<dtype, dimState> eig_inv; eig_inv.mat = eig_vec.mat.inverse();
 
-    EigenStructure<dimState> eig_struct;
+    EigenStructure<dtype, dimState> eig_struct;
     eig_struct.eig_val = eig_val;
     eig_struct.eig_vec = eig_vec;
     eig_struct.eig_inv = eig_inv;

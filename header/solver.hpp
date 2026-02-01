@@ -15,20 +15,20 @@
 #include "fluxes.hpp"
 using namespace FVTYPES;
 
-template < unsigned int dimState >
-using solveStep1D_ftype = std::function< void(const Field1D<dimState>&, Field1D<dimState>&, float) >;
+template < typename dtype, unsigned int dimState >
+using solveStep1D_ftype = std::function< void(const Field1D<dtype, dimState>&, Field1D<dtype, dimState>&, float) >;
 
-template < unsigned int dimState >
-using solveStep2D_ftype = std::function< void(Field2D<dimState>&, Field2D<dimState>&, float) >;
+template < typename dtype, unsigned int dimState >
+using solveStep2D_ftype = std::function< void(Field2D<dtype, dimState>&, Field2D<dtype, dimState>&, float) >;
 
 /*#####################################
 #--------- Boundary handler --------- #
 #####################################*/
 
-namespace BoundaryHandler { 
+namespace BoundaryHandler {
     
-    template < unsigned int dimState >
-    void apply(Field1D<dimState>& Q_field, int bc_left, int bc_right) {
+    template < typename dtype, unsigned int dimState >
+    void apply(Field1D<dtype, dimState>& Q_field, int bc_left, int bc_right) {
         size_t nx = Q_field.get_nx();
         
         if (bc_left == 0) Q_field(0) = Q_field(1);
@@ -44,50 +44,51 @@ namespace BoundaryHandler {
 #########################################*/
 
 /** @brief Finite volume solver*/
-template < unsigned int dimState >
+template < typename dtype, unsigned int dimState >
 class FiniteVolumeSolver {
     public:
         // ATTRIBUTES
-        const FluxMaker<dimState>* flux_maker;
+        const FluxMaker<dtype, dimState>& fmaker;
 
-        FiniteVolumeSolver(const FluxMaker<dimState>& flux_maker): flux_maker(&flux_maker) {}
+        FiniteVolumeSolver(const FluxMaker<dtype, dimState>& fmaker): fmaker(fmaker) {}
 
         // METHODS
         /** @brief Returns initialized fields Q and Q_next - Field1D*/
-        std::tuple< Field1D<dimState>, Field1D<dimState> > initialize(
-                const Mesh1D& mesh, const fn_x_ftype<dimState>& f_init, 
+        std::tuple< Field1D<dtype, dimState>, Field1D<dtype, dimState> > initialize(
+                const Mesh1D& mesh, const fnX_ftype<dtype, dimState>& f_init, 
                 int bc_left = 0, int bc_right = 0) const {
 
-            Field1D<dimState> Q = mesh.evaluate_center<dimState>(f_init);
-            Field1D<dimState> Q_next = mesh.evaluate_center<dimState>(f_init);
+            Field1D<dtype, dimState> Q = mesh.evaluate_center<dtype, dimState>(f_init);
+            Field1D<dtype, dimState> Q_next = mesh.evaluate_center<dtype, dimState>(f_init);
 
-            BoundaryHandler::apply<dimState>(Q, bc_left, bc_right);
-            BoundaryHandler::apply<dimState>(Q_next, bc_left, bc_right);
+            BoundaryHandler::apply<dtype, dimState>(Q, bc_left, bc_right);
+            BoundaryHandler::apply<dtype, dimState>(Q_next, bc_left, bc_right);
 
             return {Q, Q_next};
         }
 
         /** @brief Returns the solve step - Mesh1D*/
-        solveStep1D_ftype<dimState> get_solve_step(
-                const Mesh1D& mesh, const Model<dimState>& model,
-                int bc_left = 0, int bc_right = 0) const {
+        solveStep1D_ftype<dtype, dimState> get_solve_step(
+                const ModelMaker<dtype, dimState>& model_maker, const Mesh1D& mesh, int bc_left = 0, int bc_right = 0) {
 
             float dx = mesh.get_dx();
             size_t nCx = mesh.get_nCx();
-
-            NumericalFlux<dimState> F = flux_maker->make_numflux( model );
             
-            solveStep1D_ftype<dimState> solve_step = [dx, nCx, F, bc_right, bc_left]
-                (const Field1D<dimState>& Q, Field1D<dimState>& Q_next, float dt) {
+            Model<dtype, dimState> model_x = model_maker.make_normal_model();
+            NumericalFlux<dtype, dimState> F = fmaker.make_numflux( model_x );
+
+            solveStep1D_ftype<dtype, dimState> solve_step = [F, dx, nCx, bc_right, bc_left]
+                (const Field1D<dtype, dimState>& Q, Field1D<dtype, dimState>& Q_next, float dt) {
                 
                 // Main update loop
                 #pragma omp parallel for shared( Q_next )
                 for (size_t i = 1; i <= nCx; i ++) {
-                    Q_next(i) = Q(i) - ( F.num_flux(Q(i), Q(i+1)) - F.num_flux(Q(i-1), Q(i)) )*(dt/dx);
+                    Q_next(i) = Q(i) - ( F.num_flux(Q(i), Q(i+1)) 
+                                       - F.num_flux(Q(i-1), Q(i)) )*(dt/dx);
                 }
                 
                 // Apply bc conditions
-                BoundaryHandler::apply<dimState>(Q_next, bc_left, bc_right);
+                BoundaryHandler::apply<dtype, dimState>(Q_next, bc_left, bc_right);
             };
 
             return solve_step;

@@ -14,26 +14,26 @@ namespace FVTYPES {
     using xyPoint  = std::array<double, 2>;
     using xyzPoint = std::array<double, 3>;
 
-    template < unsigned int dimState >
-    using flux_ftype = std::function< StateType::Var<dimState>(const StateType::Var<dimState>&) >;
+    template < typename dtype, unsigned int dimState >
+    using flux_ftype = std::function< StateType::Var<dtype, dimState>(const StateType::Var<dtype, dimState>&) >;
 
-    template < unsigned int dimState >
-    using wave_speed_ftype = std::function< double(const StateType::Var<dimState>&) >;
+    template < typename dtype, unsigned int dimState >
+    using waveSpeed_ftype = std::function< dtype(const StateType::Var<dtype, dimState>&) >;
 
-    template < unsigned int dimState >
-    using riemann_solver_ftype = std::function< StateType::Var<dimState>(const StateType::Var<dimState>&, const StateType::Var<dimState>&, double) >;
+    template < typename dtype, unsigned int dimState >
+    using riemannSolver_ftype = std::function< StateType::Var<dtype, dimState>(const StateType::Var<dtype, dimState>&, const StateType::Var<dtype, dimState>&, dtype) >;
 
-    template < unsigned int dimState >
-    using numEdgeFlux_ftype = std::function< StateType::Var<dimState>(const StateType::Var<dimState>&, const StateType::Var<dimState>&) >;
+    template < typename dtype, unsigned int dimState >
+    using numEdgeFlux_ftype = std::function< StateType::Var<dtype, dimState>(const StateType::Var<dtype, dimState>&, const StateType::Var<dtype, dimState>&) >;
 
-    template < unsigned int dimState >
-    using fn_x_ftype = std::function< StateType::Var<dimState>(double) >;
+    template < typename dtype, unsigned int dimState >
+    using fnX_ftype = std::function< StateType::Var<dtype, dimState>(double) >;
 
-    template < unsigned int dimState >
-    using fn_xy_ftype = std::function< StateType::Var<dimState>( xyPoint ) >;
+    template < typename dtype, unsigned int dimState >
+    using fnXY_ftype = std::function< StateType::Var<dtype, dimState>( xyPoint ) >;
 
-    template < unsigned int dimState >
-    using fn_xyz_ftype = std::function< StateType::Var<dimState>( xyzPoint ) >;
+    template < typename dtype, unsigned int dimState >
+    using fnXYZ_ftype = std::function< StateType::Var<dtype, dimState>( xyzPoint ) >;
 }
 
 #endif

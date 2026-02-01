@@ -13,34 +13,36 @@ using namespace FVTYPES;
 
 int main() {
     const unsigned int dimState = 1;
+    using dtype = double;
 
     // Define mesh and initial condition
     Mesh1D mesh(1.0, 4000);
-    fn_x_ftype<dimState> u_init = [](double x) {
+    fnX_ftype<dtype, dimState> u_init = [](double x) {
         return 1.0;
     };
 
-    // Define a linear model
-    LinearMaker<dimState> model_maker(1.0);
-    Model<dimState> model = model_maker.make_model();
+    // Define a flux and a linear model
+    dtype A = 1.0;
+    //Eigen::Matrix<dtype, dimState, dimState> data({ {1.0, 0.0}, {0.0, 1.0} });
+    //EigType::Matrix<dtype, dimState> A(data);
+    LinearMaker<dtype, dimState> model_maker( A );
 
-    // Define a FV solver and a flux
-    RusanovFlux<dimState> rusanov;
-    FiniteVolumeSolver<dimState> solver(rusanov);
+    // Define a flux maker and a solver
+    RusanovFlux<dtype, dimState> rusanov;
+    FiniteVolumeSolver<dtype, dimState> solver(rusanov);
 
-    // Initialize 1D field
+    // Initialize fields and get solve step
     auto fields = solver.initialize(mesh, u_init);
-    Field1D<dimState> Q = std::get<0>(fields);
-    Field1D<dimState> Q_next = std::get<1>(fields);
+    Field1D<dtype, dimState> Q1 = std::get<0>(fields);
+    Field1D<dtype, dimState> Q2 = std::get<1>(fields);
+    solveStep1D_ftype<dtype, dimState> solve_step = solver.get_solve_step(model_maker, mesh);
+    
+    // Time loop
+    float time = 0; float T_final = 0.75; float dt = 0.5*mesh.get_dx();
 
-    // Get solve step
-    auto solve_step = solver.get_solve_step(mesh, model);
-
-    // Dumb loop
-    float time = 0.0; float dt = 0.5*mesh.get_dx(); float T_final = 0.75;
     while (time < T_final) {
-        solve_step(Q, Q_next, dt);
-        std::swap(Q, Q_next);
+        solve_step(Q1, Q2, dt);
+        std::swap(Q1, Q2);
         time += dt;
     }
 }
