@@ -92,24 +92,6 @@ class FiniteVolumeSolver {
 
             return solve_step;
         }
-        /** 
-         @brief Returns the solve step - Mesh2D
-        solveStep2D_ftype<dimState> get_solve_step(const Mesh2D& mesh, const ModelMaker<dimState>& model_maker) const {
-            float dx = mesh.get_dx(); float dy = mesh.get_dy();
-            size_t nCx = mesh.get_nCx(); size_t nCy = mesh.get_nCy();
-
-            Model<dimState> model_x = model_maker.make_normal_model({1.0, 0.0});
-            Model<dimState> model_y = model_maker.make_normal_model({0.0, 1.0});
-
-            numEdgeFlux_ftype<dimState> F = flux_maker.make_numflux(model_x);
-            numEdgeFlux_ftype<dimState> G = flux_maker.make_numflux(model_y);
-
-            solveStep2D_ftype<dimState> solve_step = [dx, dy, nCx, nCy, F, G]
-                (Field2D<dimState>& Q, Field2D<dimState>& Q_next, float dt) {
-                
-            };
-        }
-        */
 };
 
 #endif
