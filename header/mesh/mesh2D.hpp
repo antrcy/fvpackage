@@ -3,32 +3,36 @@
 
 #include <vector>
 #include <array>
+#include <algorithm>
+#include <fstream>
+#include <string>
 
-#include "utils/linear.hpp"
 #include "utils/typdefs.hpp"
+#include "utils/linear.hpp"
 using namespace FVTYPES;
+
+class Mesh2D;
 
 /*#############################
 #--------- Field 2D --------- #
 #############################*/
 
 /** @brief 2D field of dimState data*/
-template < typename dtype, unsigned int dimState >
+template < typename dtype, size_t dimState >
 class Field2D {
     
     private:
         // ATTRIBUTES
-        const static int dim = dimState;
         size_t nx; size_t ny;
-        std::vector< StateType::Var<dtype, dimState> > values;
+        std::vector< Var<dtype, dimState> > values;
 
     public:
         Field2D(size_t nx, size_t ny): nx(nx), ny(ny) {
             values.resize( (nx+2)*(ny+2) );
         }
         // ACCESSORS
-        StateType::Var<dtype, dimState>& operator()(index_t i, index_t j) {return values[ (j%(ny+2))*(nx+2) + (i%(nx+2)) ];}
-        const StateType::Var<dtype, dimState>& operator()(index_t i, index_t j) const {return values[ (j%(ny+2))*(nx+2) + (i%(nx+2)) ];}
+        Var<dtype, dimState>& operator()(size_t i, size_t j) {return values[ j*(nx+2) + i ];}
+        const Var<dtype, dimState>& operator()(size_t i, size_t j) const {return values[ j*(nx+2) + i ];}
 };
 
 /*############################
@@ -50,12 +54,11 @@ class Mesh2D {
 
     public:
 
-        Mesh2D(float Lx, float Ly, size_t nx, size_t ny) {
-            x_length = Lx; y_length = Ly;
-
-            nCx = nx; nPx = nx+1;
-            nCy = ny; nPy = ny+1;
-            dx = Lx/nx; dy = Ly/ny;
+        Mesh2D(float Lx, float Ly, size_t nx, size_t ny): 
+               x_length(Lx), y_length(Ly), 
+               nCx(nx), nCy(ny), nPx(nx+1), nPy(ny+1),
+               dx(Lx/nx), dy(Ly/ny)
+         {
 
             cell_centers.resize( (nCx+2)*(nCy+2) );
             cell_corners.resize( (nPx+2)*(nPy+2) );
@@ -85,29 +88,29 @@ class Mesh2D {
         // METHODS
         /** @brief Returns cell (i,j) <-> (x,y)*/
         xyPoint get_cell(int i, int j) const {
-            return cell_centers[ (j%(nCy+2))*(nCx+2) + (i%(nCx+2)) ];
+            return cell_centers[ j*(nCx+2) + i ];
         }
         /** @brief Returns cell (i,j) <-> (x,y)*/
         xyPoint get_corner(int i, int j) const {
-            return cell_corners[ (j%(nPy+2))*(nPx+2) + (i%(nPx+2)) ];
+            return cell_corners[ j*(nPx+2) + i ];
         }
         /** @brief  Returns cell-centered field*/
-        template < typename dtype, unsigned int dimState > 
+        template < typename dtype, size_t dimState > 
         Field2D<dtype, dimState> get_center_field() const {
             return Field2D<dtype, dimState>(nCx, nCy);
         }
         /** @brief Returns corner-centered field*/
-        template < typename dtype, unsigned int dimState > 
+        template < typename dtype, size_t dimState > 
         Field2D<dtype, dimState> get_corner_field() const {
             return Field2D<dtype, dimState>(nPx, nPy);
         }
         /** @brief Returns cell-evaluated field*/
-        template < typename dtype, unsigned int dimState >
+        template < typename dtype, size_t dimState >
         Field2D<dtype, dimState> evaluate_center( const fnXY_ftype<dtype, dimState>& f_init ) const {
             Field2D<dtype, dimState> field = get_center_field<dtype, dimState>();
 
-            for (size_t j = 0; j < nCy+2; ++j) {
-                for (size_t i = 0; i < nCx+2; ++i) {
+            for (size_t j = 0; j < nCy+2; ++ j) {
+                for (size_t i = 0; i < nCx+2; ++ i) {
                     field(i,j) = f_init(get_cell(i,j));
                 }
             }
@@ -115,12 +118,12 @@ class Mesh2D {
             return field;
         }
         /** @brief Returns corner-evaluated field*/
-        template < typename dtype, unsigned int dimState >
+        template < typename dtype, size_t dimState >
         Field2D<dtype, dimState> evaluate_corner( const fnXY_ftype<dtype, dimState>& f_init ) const {
             Field2D<dtype, dimState> field = get_corner_field<dtype, dimState>();
 
-            for (size_t j = 0; j < nCy+3; ++j) {
-                for (size_t i = 0; i < nCx+3; ++i) {
+            for (size_t j = 0; j < nCy+3; ++ j) {
+                for (size_t i = 0; i < nCx+3; ++ i) {
                     field(i,j) = f_init(get_corner(i,j));
                 }
             }
