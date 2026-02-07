@@ -11,6 +11,10 @@
 #include "utils/linear.hpp"
 using namespace FVTYPES;
 
+#ifndef IMAGE_PATH
+#define IMAGE_PATH "/home/antoine/Internship/fvpackage/results"
+#endif
+
 class Mesh2D;
 
 /*#############################
@@ -20,7 +24,6 @@ class Mesh2D;
 /** @brief 2D field of dimState data*/
 template < typename dtype, size_t dimState >
 class Field2D {
-    
     private:
         // ATTRIBUTES
         size_t nx; size_t ny;
@@ -33,6 +36,8 @@ class Field2D {
         // ACCESSORS
         Var<dtype, dimState>& operator()(size_t i, size_t j) {return values[ j*(nx+2) + i ];}
         const Var<dtype, dimState>& operator()(size_t i, size_t j) const {return values[ j*(nx+2) + i ];}
+        size_t get_nx() const {return nx;}
+        size_t get_ny() const {return ny;}
 };
 
 /*############################
@@ -41,7 +46,6 @@ class Field2D {
 
 /** @brief 2D Cartesian mesh*/
 class Mesh2D {
-
     private:
         // ATTRIBUTES
         float x_length; float y_length;
@@ -53,7 +57,6 @@ class Mesh2D {
         std::vector< xyPoint > cell_corners;
 
     public:
-
         Mesh2D(float Lx, float Ly, size_t nx, size_t ny): 
                x_length(Lx), y_length(Ly), 
                nCx(nx), nCy(ny), nPx(nx+1), nPy(ny+1),
@@ -63,14 +66,14 @@ class Mesh2D {
             cell_centers.resize( (nCx+2)*(nCy+2) );
             cell_corners.resize( (nPx+2)*(nPy+2) );
             
-            for (size_t j = 0; j < nCy+2; ++j) {
-                for (size_t i = 0; i < nCx+2; ++i) {
+            for (size_t j = 0; j < nCy+2; ++ j) {
+                for (size_t i = 0; i < nCx+2; ++ i) {
                     xyPoint center = {-0.5*dx + i*dx, -0.5*dy + j*dy};
                     cell_centers[j*(nCx+2) + i] = center;            
                 }
             }
 
-            for (size_t j = 0; j < nPy+2; ++j) {
+            for (size_t j = 0; j < nPy+2; ++ j) {
                 for (size_t i = 0; i < nPx+2; ++ i) {
                     xyPoint corner = {-dx + j*dx, -dy + i*dy};
                     cell_corners[j*(nPx+2) + i] = corner;
