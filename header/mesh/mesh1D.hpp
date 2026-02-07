@@ -11,10 +11,6 @@
 #include "utils/linear.hpp"
 using namespace FVTYPES;
 
-#ifndef IMAGE_PATH
-#define IMAGE_PATH "/home/antoine/Internship/fvpackage/results"
-#endif
-
 class Mesh1D;
 
 /*#############################
@@ -31,11 +27,43 @@ class Field1D {
 
     public:
         Field1D(size_t nx): nx(nx) {values.resize( (nx+2) );}
+        Field1D(const Field1D<dtype, dimState>& field): nx(field.nx) {
+            values.reserve( (nx+2) );
+            for (const auto& val: field.values) {
+                values.push_back(val);
+            }
+        }
 
         // ACCESSORS
         Var<dtype, dimState>& operator()(size_t i) {return values[ i ];}
         const Var<dtype, dimState>& operator()(size_t i) const {return values[ i ];}
         size_t get_nx() const {return nx;}
+
+        Field1D<dtype, dimState> operator+(const Field1D<dtype, dimState>& field) const {
+            Field1D<dtype, dimState> result( *this );
+            for (size_t i = 0; i < values.size(); ++ i) {
+                result.values[i] += field.values[i];
+            } return result;
+        }
+
+        Field1D<dtype, dimState> operator*(const dtype& l) const {
+            Field1D<dtype, dimState> result( *this );
+            for (size_t i = 0; i < values.size(); ++ i) {
+                result.values[i] *= l;
+            } return result;
+        }
+
+        Field1D<dtype, dimState>& operator+=(const Field1D<dtype, dimState>& field) {
+            for (size_t i = 0; i < values.size(); ++ i) {
+                values[i] += field.values[i];
+            } return *this;
+        }
+
+        Field1D<dtype, dimState>& operator*=(const dtype& l) const {
+            for (size_t i = 0; i < values.size(); ++ i) {
+                values[i] *= l;
+            } return *this;
+        }
 
         void save_to_csv(const Mesh1D&, std::string) const;
 };
@@ -141,7 +169,7 @@ class Mesh1D {
 
 template < typename dtype, size_t dimState >
 void Field1D<dtype, dimState>::save_to_csv(const Mesh1D& mesh, std::string file_name) const {
-    std::ofstream file(IMAGE_PATH+'/'+file_name);
+    std::ofstream file(file_name);
 
     file << "x";
     for (size_t k = 0; k < dimState; ++ k) file << ",v" << k;
@@ -155,7 +183,7 @@ void Field1D<dtype, dimState>::save_to_csv(const Mesh1D& mesh, std::string file_
 
 template < typename dtype >
 void Field1D<dtype, 1>::save_to_csv(const Mesh1D& mesh, std::string file_name) const {
-    std::ofstream file(IMAGE_PATH+'/'+file_name);
+    std::ofstream file(file_name);
 
     file << "x,v";
     for (size_t i = 0; i < nx+2; ++ i)

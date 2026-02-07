@@ -11,10 +11,6 @@
 #include "utils/linear.hpp"
 using namespace FVTYPES;
 
-#ifndef IMAGE_PATH
-#define IMAGE_PATH "/home/antoine/Internship/fvpackage/results"
-#endif
-
 class Mesh2D;
 
 /*#############################
@@ -30,14 +26,68 @@ class Field2D {
         std::vector< Var<dtype, dimState> > values;
 
     public:
-        Field2D(size_t nx, size_t ny): nx(nx), ny(ny) {
-            values.resize( (nx+2)*(ny+2) );
+        Field2D(size_t nx, size_t ny): nx(nx), ny(ny) {values.resize( (nx+2)*(ny+2) );}
+        Field2D(const Field2D<dtype, dimState>& field): nx(field.nx), ny(field.ny) {
+            values.reserve( (nx+2)*(ny+2) );
+            for (const auto& val: field.values) {
+                values.push_back(val);
+            }
         }
+
         // ACCESSORS
         Var<dtype, dimState>& operator()(size_t i, size_t j) {return values[ j*(nx+2) + i ];}
         const Var<dtype, dimState>& operator()(size_t i, size_t j) const {return values[ j*(nx+2) + i ];}
         size_t get_nx() const {return nx;}
         size_t get_ny() const {return ny;}
+
+        Field2D<dtype, dimState> operator+(const Field2D<dtype, dimState>& field) const {
+            Field2D<dtype, dimState> result( *this );
+            for (size_t i = 0; i < values.size(); ++ i) {
+                result.values[i] += field.values[i];
+            } return result;
+        }
+
+        Field2D<dtype, dimState> operator*(const dtype& l) const {
+            Field2D<dtype, dimState> result( *this );
+            for (size_t i = 0; i < values.size(); ++ i) {
+                result.values[i] *= l;
+            } return result;
+        }
+
+        Field2D<dtype, dimState>& operator+=(const Field2D<dtype, dimState>& field) {
+            for (size_t i = 0; i < values.size(); ++ i) {
+                values[i] += field.values[i];
+            } return *this;
+        }
+
+        Field2D<dtype, dimState>& operator*=(const dtype& l) const {
+            for (size_t i = 0; i < values.size(); ++ i) {
+                values[i] *= l;
+            } return *this;
+        }
+
+        void save_to_csv(const Mesh2D&, std::string) const;
+};
+
+/** @brief 2D field of dimState data*/
+template < typename dtype >
+class Field2D<dtype, 1> {
+    private:
+        // ATTRIBUTES
+        size_t nx; size_t ny;
+        std::vector< dtype > values;
+
+    public:
+        Field2D(size_t nx, size_t ny): nx(nx), ny(ny) {
+            values.resize( (nx+2)*(ny+2) );
+        }
+        // ACCESSORS
+        dtype& operator()(size_t i, size_t j) {return values[ j*(nx+2) + i ];}
+        const dtype& operator()(size_t i, size_t j) const {return values[ j*(nx+2) + i ];}
+        size_t get_nx() const {return nx;}
+        size_t get_ny() const {return ny;}
+
+        void save_to_csv(const Mesh2D&, std::string) const;
 };
 
 /*############################
@@ -134,4 +184,43 @@ class Mesh2D {
             return field;
         }
 };
+
+template < typename dtype, size_t dimState >
+void Field2D<dtype, dimState>::save_to_csv(const Mesh2D& mesh, std::string file_name) const {
+    std::ofstream file(file_name);
+
+    std::cout << "writing to " << file_name << std::endl;
+    
+    file << "x,y";
+    for (size_t k = 0; k < dimState; ++ k) file << ",v" << k;
+    for (size_t i = 0; i < nx+2; ++ i) {
+        for ( size_t j = 0; j < ny+2; ++ j) {
+            xyPoint p = mesh.get_cell(i,j);
+            file << "\n" << p[0] << ',' << p[1];
+            for (size_t k = 0; k < dimState; ++ k) {
+                file << ',' << this->operator()(i,j)[k];
+            }
+        }
+    }
+
+    file.close();
+}
+
+template < typename dtype >
+void Field2D<dtype, 1>::save_to_csv(const Mesh2D& mesh, std::string file_name) const {
+    std::ofstream file(file_name);
+
+    file << "x,y,v";
+    for (size_t i = 0; i < nx+2; ++ i) {
+        for (size_t j = 0; j < ny+2; ++ j) {
+            xyPoint p = mesh.get_cell(i,j);
+            file << '\n' << p[0] << ',' << p[1];
+            file << this->operator()(i,j);
+        }
+    }
+
+    file.close();
+}
+
+
 #endif

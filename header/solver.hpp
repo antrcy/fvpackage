@@ -21,8 +21,10 @@ template < typename dtype, size_t dimState >
 using solveStep1D_ftype = std::function< void(const Field1D<dtype, dimState>&, Field1D<dtype, dimState>&, float) >;
 
 template < typename dtype, size_t dimState >
-using solveStep2D_ftype = std::function< void(Field2D<dtype, dimState>&, Field2D<dtype, dimState>&, float) >;
+using solveStep2D_ftype = std::function< void(const Field2D<dtype, dimState>&, Field2D<dtype, dimState>&, float) >;
 
+template < typename fieldType >
+using solveStep_ftype = std::function< void(const fieldType&, fieldType&, float) >;
 
 /*#####################################
 #--------- Numerical fluxes --------- #
@@ -110,17 +112,14 @@ class FiniteVolumeSolver {
 
         // METHODS
         /** @brief Returns initialized fields Q and Q_next - Field1D*/
-        std::tuple< Field1D<dtype, dimState>, Field1D<dtype, dimState> > initialize(
+        Field1D<dtype, dimState> initialize(
                 const Mesh1D& mesh, const fnX_ftype<dtype, dimState>& f_init, 
                 int bc_left = 0, int bc_right = 0) const {
 
             Field1D<dtype, dimState> Q = mesh.evaluate_center<dtype, dimState>(f_init);
-            Field1D<dtype, dimState> Q_next = mesh.evaluate_center<dtype, dimState>(f_init);
-
             BoundaryHandler::apply<dtype, dimState>(Q, bc_left, bc_right);
-            BoundaryHandler::apply<dtype, dimState>(Q_next, bc_left, bc_right);
 
-            return {Q, Q_next};
+            return Q;
         }
 
         /** @brief Returns the solve step - Mesh1D*/
@@ -131,15 +130,22 @@ class FiniteVolumeSolver {
             
             // Build and store 1D models
             models.push_back( std::move( model_maker.make_normal_model() ) );
-            
-            solveStep1D_ftype<dtype, dimState> solve_step = [this, dx, nCx, bc_right, bc_left]
+            auto* mx = models[0].get();
+
+            solveStep1D_ftype<dtype, dimState> solve_step = [=]
                 (const Field1D<dtype, dimState>& Q, Field1D<dtype, dimState>& Q_next, float dt) {
                 
+                const auto cdx = dt/dx;
+
                 // Main update loop
-                #pragma omp parallel for shared( Q_next )
-                for (size_t i = 1; i <= nCx; i ++) {
-                    Q_next(i) = Q(i) - (F_num( Q(i), Q(i+1), *models[0] ) - 
-                                        F_num( Q(i-1), Q(i), *models[0] ))*(dt/dx);
+                #pragma omp parallel for schedule(static)
+                for (size_t i = 1; i <= nCx; ++ i) {
+                    #pragma omp simd
+                    for (int k = 0; k < 1; ++ k) {
+                        const auto qi = Q(i);
+                        Q_next(i) = qi - (F_num( Q(i), Q(i+1), *mx ) - 
+                                          F_num( Q(i-1), Q(i), *mx ))*cdx;
+                    }
                 }
                 
                 // Apply bc conditions
@@ -150,17 +156,14 @@ class FiniteVolumeSolver {
         }
 
         /** @brief Returns initialized fields Q and Q_next - Field2D*/
-        std::tuple< Field2D<dtype, dimState>, Field1D<dtype, dimState> > initialize(
+        Field2D<dtype, dimState> initialize(
                 const Mesh2D& mesh, const fnXY_ftype<dtype, dimState>& f_init, 
                 int bc_left = 0, int bc_right = 0, int bc_up = 0, int bc_down = 0) const {
 
             Field2D<dtype, dimState> Q = mesh.evaluate_center<dtype, dimState>(f_init);
-            Field2D<dtype, dimState> Q_next = mesh.evaluate_center<dtype, dimState>(f_init);
-
             BoundaryHandler::apply<dtype, dimState>(Q, bc_left, bc_right, bc_up, bc_down);
-            BoundaryHandler::apply<dtype, dimState>(Q_next, bc_left, bc_right, bc_up, bc_down);
 
-            return {Q, Q_next};
+            return Q;
         }
 
         /** @brief Returns the solve step - Mesh2D*/
@@ -172,17 +175,26 @@ class FiniteVolumeSolver {
             // Build and store 2D models
             models.push_back( std::move( model_maker.make_normal_model({1.0, 0.0}) ) );
             models.push_back( std::move( model_maker.make_normal_model({0.0, 1.0}) ) );
+            auto* mx = models[0].get();
+            auto* my = models[0].get();
             
-            solveStep2D_ftype<dtype, dimState> solve_step = [this, dx, dy, nCx, nCy, bc_right, bc_left, bc_up, bc_down]
+            solveStep2D_ftype<dtype, dimState> solve_step = [=]
                 (const Field2D<dtype, dimState>& Q, Field2D<dtype, dimState>& Q_next, float dt) {
                 
+                const auto cdx = dt/dx;
+                const auto cdy = dt/dy;
+                
                 // Main update loop
+                #pragma omp parallel for schedule(static)
                 for (size_t j = 1; j <= nCy; j ++) {
+                    #pragma omp simd
                     for (size_t i = 1; i <= nCx; i ++) {
-                        Q_next(i,j) = Q(i,j) - (F_num( Q(i,j), Q(i+1,j), *models[0] ) - 
-                                                F_num( Q(i-1,j), Q(i,j), *models[0] ))*(dt/dx)
-                                             - (F_num( Q(i,j), Q(i,j+1), *models[1] ) -
-                                                F_num( Q(i,j-1), Q(i,j), *models[1] ))*(dt/dy);
+                        const auto qij = Q(i,j);
+
+                        Q_next(i,j) = qij - (F_num( Q(i,j), Q(i+1,j), *mx ) - 
+                                             F_num( Q(i-1,j), Q(i,j), *mx ))*cdx
+                                          - (F_num( Q(i,j), Q(i,j+1), *my ) -
+                                             F_num( Q(i,j-1), Q(i,j), *my ))*cdy;
                     }
                 }
                 
@@ -194,5 +206,61 @@ class FiniteVolumeSolver {
         }
 };
 
+namespace Integrator 
+{
+
+template < typename fieldType >
+fieldType Euler( const solveStep_ftype<fieldType>& solve_step, 
+                 const fieldType& Q_init, 
+                 float t_final, float dt ) {
+    float time = 0.0;
+
+    fieldType Q( Q_init );
+    fieldType Q_next( Q_init );
+
+    while (time < t_final) {
+
+        /*if (time + dt < t_final) {
+            time += dt;
+        } else {
+            dt = t_final - time;
+            time = t_final;
+        }*/
+
+        solve_step(Q, Q_next, dt);
+        std::swap(Q, Q_next);
+        time += dt;
+    }
+
+    return Q;
+}
+
+template < typename fieldType >
+fieldType RK2( const solveStep_ftype<fieldType>& solve_step, 
+               const fieldType& Q_init, 
+               float t_final, float dt ) {
+    float time = 0.0;
+
+    fieldType Q( Q_init );
+    fieldType Q_next( Q_init );
+    fieldType Q_inter( Q_init );
+
+    while (time < t_final) {
+        solve_step(Q, Q_inter, dt);
+
+        if (time + dt < t_final) {
+            time += dt;
+        } else {
+            dt = t_final - time;
+            time = t_final;
+        }
+
+        solve_step(Q_inter, Q_next);
+        Q = Q*0.5 + Q_next*0.5;
+    }
+
+    return Q;
+}
+}
 
 #endif

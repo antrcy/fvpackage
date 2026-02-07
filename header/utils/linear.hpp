@@ -60,6 +60,16 @@ std::array<dtype, dimState> operator*(
     return result;
 }
 
+template < typename dtype, size_t dimState >
+std::array<dtype, dimState> operator*(
+    const std::array<dtype, dimState>& a, const float& l )
+{
+    std::array<dtype, dimState> result;
+    for (size_t i = 0; i < dimState; ++ i)
+        result[i] = a[i]*l;
+    return result;
+}
+
 /** @brief Sorts vec in place and returns the permutation*/
 template < typename dtype, size_t dimState >
 std::array<size_t, dimState> bubble_sort( std::array<dtype, dimState>& vec ) {
@@ -108,7 +118,9 @@ struct  EigType::Matrix {
 
     // METHODES
     Matrix() = default;
-    Matrix(const Eigen::Matrix<dtype, dimState, dimState>& mat): mat(mat) {}
+    Matrix(const Eigen::Matrix<dtype, dimState, dimState>& mat): mat( mat ) {}
+    Matrix(const std::initializer_list< std::initializer_list<dtype> >& init_list): 
+        mat( Eigen::Matrix<dtype, dimState, dimState>(init_list) ) {}
     explicit Matrix(dtype init) {
         static_assert(dimState == 1);
         mat(0,0) = init;
@@ -161,7 +173,12 @@ EigType::EigenStructure<dtype, dimState> EigType::Matrix<dtype, dimState>::get_e
     Eigen::EigenSolver< Eigen::Matrix<dtype, dimState, dimState> > es(mat);
 
     // Compute real eigenvalues and sort them
-    std::array<dtype, dimState> eig_val( es.eigenvalues().real().data() );
+    std::array<dtype, dimState> eig_val;  
+    Eigen::Vector<dtype, dimState> eig_res = es.eigenvalues().real();
+    for (size_t i = 0; i < dimState; i ++) {
+        eig_val[i] = eig_res(i);
+    }
+
     std::array<size_t, dimState> perm = bubble_sort(eig_val);
 
     // Sort eigenvectors according to the same order
