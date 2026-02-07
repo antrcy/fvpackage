@@ -5,6 +5,7 @@
 #include "mesh/mesh1D.hpp"
 #include "utils/linear.hpp"
 #include "utils/typdefs.hpp"
+#include "utils/timer.hpp"
 #include "models.hpp"
 #include "solver.hpp"
 using namespace FVTYPES;
@@ -19,7 +20,7 @@ int main() {
     };
 
     // Define model and solver
-    Mesh1D mesh(1.0, 4000);
+    Mesh1D mesh(1.0, 5000);
     LinearMaker<dtype, dimState> linear(1.0);
     FiniteVolumeSolver<dtype, dimState> solver(linear, "rusanov");
 
@@ -35,9 +36,12 @@ int main() {
     // Time loop
     float time = 0; float T_final = 0.75; float dt = 0.5*mesh.get_dx();
 
+    Timer timer;
     while (time < T_final) {
         solve_step(Q1, Q2, dt);
         std::swap(Q1, Q2);
         time += dt;
     }
+    timer.stop();
+    std::cout << ">> Time : " << timer.getElapsed() << std::endl;
 }
