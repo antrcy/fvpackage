@@ -14,7 +14,7 @@ using namespace FVTYPES;
 #--------- Model (abstract) --------- #
 #####################################*/
 
-/**@brief One dimensional conservation model*/
+/** @brief One dimensional conservation model*/
 template < typename dtype, size_t dimState >
 struct Model {
 
@@ -70,9 +70,9 @@ struct LinearModel<dtype, 1>: Model<dtype, 1> {
 
     dtype c_speed;
 
-    dtype flux( const dtype& Q ) const {return c_speed*Q;}
-    dtype wave_speed( const dtype& Q ) const {return std::abs(c_speed);}
-    dtype riemann_solver( const dtype& QL, const dtype& QR, dtype xi ) const {return (c_speed < xi) ? QR : QR;}
+    inline dtype flux( const dtype& Q ) const {return c_speed*Q;}
+    inline dtype wave_speed( const dtype& Q ) const {return std::abs(c_speed);}
+    inline dtype riemann_solver( const dtype& QL, const dtype& QR, dtype xi ) const {return (c_speed < xi) ? QR : QR;}
 
     LinearModel(const dtype& c_speed): c_speed(c_speed) {}
 };
@@ -103,7 +103,7 @@ struct LinearMaker: ModelMaker<dtype, dimState> {
     EigType::Matrix<dtype, dimState> flux_y;
 
     std::unique_ptr< Model<dtype, dimState> > make_normal_model() const;
-    std::unique_ptr< Model<dtype, dimState> > make_normal_model(const std::array<double, 2>& normal) const;
+    std::unique_ptr< Model<dtype, dimState> > make_normal_model( const std::array<double, 2>& normal ) const;
 
     LinearMaker(const EigType::Matrix<dtype, dimState>& flux_x): flux_x(flux_x) {}
     LinearMaker(const EigType::Matrix<dtype, dimState>& flux_x,
@@ -116,7 +116,7 @@ std::unique_ptr< Model<dtype, dimState> > LinearMaker<dtype, dimState>::make_nor
 }
 
 template < typename dtype, size_t dimState >
-std::unique_ptr< Model<dtype, dimState> > LinearMaker<dtype, dimState>::make_normal_model(const std::array<double, 2>& normal) const {
+std::unique_ptr< Model<dtype, dimState> > LinearMaker<dtype, dimState>::make_normal_model( const std::array<double, 2>& normal ) const {
     double nx = normal[0];
     double ny = normal[1];
     EigType::Matrix<dtype, dimState> A_flux(flux_x*nx + flux_y*ny);
@@ -135,7 +135,7 @@ struct LinearMaker<dtype, 1>: ModelMaker<dtype, 1> {
     dtype flux_y;
 
     std::unique_ptr< Model<dtype, 1> > make_normal_model() const;
-    std::unique_ptr< Model<dtype, 1> > make_normal_model(const std::array<double, 2>& normal) const;
+    std::unique_ptr< Model<dtype, 1> > make_normal_model( const std::array<double, 2>& normal ) const;
 
     LinearMaker(const dtype& flux_x): flux_x(flux_x) {}
     LinearMaker(const dtype& flux_x, const dtype& flux_y): flux_x(flux_x), flux_y(flux_y) {}
@@ -147,7 +147,7 @@ std::unique_ptr< Model<dtype, 1> > LinearMaker<dtype, 1>::make_normal_model() co
 }
 
 template < typename dtype >
-std::unique_ptr< Model<dtype, 1> > LinearMaker<dtype, 1>::make_normal_model(const std::array<double, 2>& normal) const {
+std::unique_ptr< Model<dtype, 1> > LinearMaker<dtype, 1>::make_normal_model( const std::array<double, 2>& normal ) const {
     double nx = normal[0];
     double ny = normal[1];
     dtype A_flux = flux_x*nx + flux_y*ny;

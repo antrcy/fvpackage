@@ -215,7 +215,7 @@ void Field2D<dtype, 1>::save_to_csv(const Mesh2D& mesh, std::string file_name) c
         for (size_t j = 0; j < ny+2; ++ j) {
             xyPoint p = mesh.get_cell(i,j);
             file << '\n' << p[0] << ',' << p[1];
-            file << this->operator()(i,j);
+            file << ',' << this->operator()(i,j);
         }
     }
 

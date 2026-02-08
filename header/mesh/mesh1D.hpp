@@ -23,7 +23,7 @@ class Field1D {
     private:
         // ATTRIBUTES
         size_t nx;
-        std::vector< Var<dtype, dimState> > values;
+        std::vector <Var <dtype, dimState>> values;
 
     public:
         Field1D(size_t nx): nx(nx) {values.resize( (nx+2) );}
@@ -175,7 +175,7 @@ void Field1D<dtype, dimState>::save_to_csv(const Mesh1D& mesh, std::string file_
     for (size_t k = 0; k < dimState; ++ k) file << ",v" << k;
     for (size_t i = 0; i < nx+2; ++i) {
         file << '\n' << mesh.get_cell(i);
-        for (size_t k = 0; k < dimState; ++ k) file << ',' << values[i](k);
+        for (size_t k = 0; k < dimState; ++ k) file << ',' << values[i][k];
     }
 
     file.close();

@@ -14,7 +14,8 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Eigenvalues>
 
-namespace EigType {
+namespace EigType 
+{
     template < typename dtype, size_t dimState >
     struct Matrix;
 
@@ -40,6 +41,16 @@ std::array<dtype, dimState> operator+(
 }
 
 template < typename dtype, size_t dimState >
+std::array<dtype, dimState>& operator+=(
+    std::array<dtype, dimState>& a, 
+    const std::array<dtype, dimState>& b ) 
+{
+    for (size_t i = 0; i < dimState; ++ i)
+        a[i] += b[i];
+    return a;
+}
+
+template < typename dtype, size_t dimState >
 std::array<dtype, dimState> operator-(
     const std::array<dtype, dimState>& a, 
     const std::array<dtype, dimState>& b )
@@ -48,6 +59,16 @@ std::array<dtype, dimState> operator-(
     for (size_t i = 0; i < dimState; ++ i)
         result[i] = a[i] - b[i];
     return result;
+}
+
+template < typename dtype, size_t dimState >
+std::array<dtype, dimState>& operator-=(
+    std::array<dtype, dimState>& a, 
+    const std::array<dtype, dimState>& b ) 
+{
+    for (size_t i = 0; i < dimState; ++ i)
+        a[i] -= b[i];
+    return a;
 }
 
 template < typename dtype, size_t dimState >
@@ -61,6 +82,15 @@ std::array<dtype, dimState> operator*(
 }
 
 template < typename dtype, size_t dimState >
+std::array<dtype, dimState>& operator*=(
+    std::array<dtype, dimState>& a, const dtype& l )
+{
+    for (size_t i = 0; i < dimState; ++ i)
+        a[i] *= l;
+    return a;
+}
+
+template < typename dtype, size_t dimState >
 std::array<dtype, dimState> operator*(
     const std::array<dtype, dimState>& a, const float& l )
 {
@@ -68,6 +98,15 @@ std::array<dtype, dimState> operator*(
     for (size_t i = 0; i < dimState; ++ i)
         result[i] = a[i]*l;
     return result;
+}
+
+template < typename dtype, size_t dimState >
+std::array<dtype, dimState>& operator*=(
+    std::array<dtype, dimState>& a, const float& l )
+{
+    for (size_t i = 0; i < dimState; ++ i)
+        a[i] *= l;
+    return a;
 }
 
 /** @brief Sorts vec in place and returns the permutation*/

@@ -1,7 +1,4 @@
 #include <iostream>
-#include <tuple>
-#include <eigen3/Eigen/Dense>
-
 #include "mesh/mesh1D.hpp"
 #include "utils/linear.hpp"
 #include "utils/typdefs.hpp"
@@ -10,7 +7,16 @@
 #include "solver.hpp"
 using namespace FVTYPES;
 
-int main() {
+int main(int argc, char** argv) {
+
+    if (argc == 1) {
+        std::cout << "FVPACKAGE ------------------------------------------------------------ \n"
+                  << "Options: -config <path_to_config> REQUIRED \n"
+                  << "---------------------------------------------------------------------- \n";
+        return 0;
+    }     
+
+
     // Define dtype and dimState
     using dtype = double;
     const unsigned int dimState = 1;
@@ -43,7 +49,7 @@ int main() {
     fieldType Q_final = Integrator::Euler< fieldType >(solve_step, Q, T_final, dt);
     timer.stop();
 
-    std::cout << ">> Time : " << timer.getElapsed() << std::endl;
+    std::cout << ">> Time : " << timer.getElapsed() << ' ' << Q_final(0,0) << std::endl;
 
     std::string IMAGE_PATH = "/home/antoine/Internship/fvpackage/results";
     Q_final.save_to_csv(mesh, IMAGE_PATH + '/' + "2D-vector.csv");

@@ -93,12 +93,14 @@ template < typename dtype, size_t dimState >
 class FiniteVolumeSolver {
     public:
         // ATTRIBUTES
-        using edgeFlux = Var<dtype, dimState> (*)( const Var<dtype, dimState>&, const Var<dtype, dimState>&, const Model<dtype, dimState>& );
+        using edgeFlux = Var<dtype, dimState> (*)( const Var<dtype, dimState>&, 
+                                                   const Var<dtype, dimState>&, 
+                                                   const Model<dtype, dimState>& );
         
         edgeFlux F_num;
 
         const ModelMaker<dtype, dimState>& model_maker;
-        std::vector< std::unique_ptr< Model<dtype, dimState> > > models;
+        std::vector <std::unique_ptr <Model <dtype, dimState>>> models;
 
         // CONSTRUCTOR
         FiniteVolumeSolver(const ModelMaker<dtype, dimState>& model_maker,
@@ -148,7 +150,7 @@ class FiniteVolumeSolver {
                     }
                 }
                 
-                // Apply bc conditions
+                // Apply bc
                 BoundaryHandler::apply<dtype, dimState>(Q_next, bc_left, bc_right);
             };
 
@@ -198,13 +200,17 @@ class FiniteVolumeSolver {
                     }
                 }
                 
-                // Apply bc conditions
+                // Apply bc
                 BoundaryHandler::apply<dtype, dimState>(Q_next, bc_left, bc_right, bc_up, bc_down);
             };
 
             return solve_step;
         }
 };
+
+/*####################################
+#--------- Time integrator --------- #
+####################################*/
 
 namespace Integrator 
 {
@@ -220,12 +226,12 @@ fieldType Euler( const solveStep_ftype<fieldType>& solve_step,
 
     while (time < t_final) {
 
-        /*if (time + dt < t_final) {
+        if (time + dt < t_final) {
             time += dt;
         } else {
             dt = t_final - time;
             time = t_final;
-        }*/
+        }
 
         solve_step(Q, Q_next, dt);
         std::swap(Q, Q_next);
